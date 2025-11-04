@@ -1,0 +1,193 @@
+import { Users, Clock, FileText, DollarSign } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useState, useEffect } from "react";
+
+interface TableCardProps {
+  id: string;
+  tableNumber: string;
+  status: "free" | "occupied" | "preparing" | "ready" | "reserved" | "served";
+  seats: number;
+  currentGuests?: number;
+  orderStartTime?: string | null;
+  onClick: (id: string) => void;
+  onToggleServed?: (id: string) => void;
+  onViewOrder?: (id: string) => void;
+  onBilling?: (id: string) => void;
+}
+
+const statusConfig = {
+  free: {
+    borderColor: "border-black",
+    circleColor: "bg-white",
+    circleBorder: "border-black",
+    label: "Available",
+  },
+  occupied: {
+    borderColor: "border-[#ff2400]",
+    circleColor: "bg-[#ff2400]",
+    circleBorder: "border-[#ff2400]",
+    label: "Occupied",
+  },
+  preparing: {
+    borderColor: "border-[#fff500]",
+    circleColor: "bg-[#fff500]",
+    circleBorder: "border-[#fff500]",
+    label: "Preparing",
+  },
+  ready: {
+    borderColor: "border-[#3acd32]",
+    circleColor: "bg-[#3acd32]",
+    circleBorder: "border-[#3acd32]",
+    label: "Ready",
+  },
+  reserved: {
+    borderColor: "border-[#0075ff]",
+    circleColor: "bg-[#0075ff]",
+    circleBorder: "border-[#0075ff]",
+    label: "Reserved",
+  },
+  served: {
+    borderColor: "border-[#8000ff]",
+    circleColor: "bg-[#8000ff]",
+    circleBorder: "border-[#8000ff]",
+    label: "Served",
+  },
+};
+
+export default function TableCard({
+  id,
+  tableNumber,
+  status,
+  seats,
+  currentGuests,
+  orderStartTime,
+  onClick,
+  onToggleServed,
+  onViewOrder,
+  onBilling,
+}: TableCardProps) {
+  const config = statusConfig[status];
+  const [elapsedTime, setElapsedTime] = useState(0);
+  
+  useEffect(() => {
+    if (!orderStartTime || (status !== "preparing" && status !== "ready")) {
+      return;
+    }
+
+    const updateTime = () => {
+      const startTime = new Date(orderStartTime).getTime();
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      setElapsedTime(elapsed);
+    };
+
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, [orderStartTime, status]);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const handleClick = (e: React.MouseEvent) => {
+    onClick(id);
+  };
+
+  const handleServedClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onToggleServed) {
+      onToggleServed(id);
+    }
+  };
+
+  const handleViewOrder = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onViewOrder) {
+      onViewOrder(id);
+    }
+  };
+
+  const handleBilling = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onBilling) {
+      onBilling(id);
+    }
+  };
+  
+  return (
+    <div className="relative flex flex-col items-center">
+      <button
+        onClick={handleClick}
+        data-testid={`table-${id}`}
+        className={cn(
+          "w-full p-4 rounded-lg border-2 bg-white transition-all hover:shadow-xl hover:scale-105 active:scale-95 min-w-32",
+          config.borderColor
+        )}
+      >
+        <div className="flex flex-col items-center gap-2">
+          <div className={cn(
+            "w-16 h-16 rounded-full border-2 flex items-center justify-center transition-all",
+            config.circleColor,
+            config.circleBorder,
+            status === "free" && "text-black"
+          )}>
+            <span className={cn(
+              "text-2xl font-semibold",
+              status === "free" ? "text-black" : "text-white"
+            )}>{tableNumber}</span>
+          </div>
+          <div className="text-center w-full">
+            <p className="text-xs font-semibold uppercase text-black">{config.label}</p>
+            <div className="flex items-center gap-1 justify-center mt-1 text-xs text-black">
+              <Users className="h-3 w-3" />
+              <span>
+                {currentGuests || 0}/{seats}
+              </span>
+            </div>
+            {(status === "preparing" || status === "ready") && orderStartTime && (
+              <div className="flex items-center gap-1 justify-center mt-1 text-xs font-mono font-semibold text-black">
+                <Clock className="h-3 w-3" />
+                <span>{formatTime(elapsedTime)}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </button>
+      
+      {status === "ready" && onToggleServed && (
+        <button
+          onClick={handleServedClick}
+          className="mt-2 bg-[#8000ff] hover:bg-[#7000e6] text-white text-xs px-4 py-1.5 rounded-full font-medium transition-all hover:shadow-md"
+          data-testid={`toggle-served-${id}`}
+        >
+          Mark Served
+        </button>
+      )}
+      
+      <div className="flex gap-2 mt-2">
+        {onViewOrder && (
+          <button
+            onClick={handleViewOrder}
+            className="w-9 h-9 rounded-full bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center transition-all hover:shadow-md hover:scale-110 active:scale-95"
+            title="View Order Details"
+            data-testid={`view-order-${id}`}
+          >
+            <FileText className="h-4 w-4" />
+          </button>
+        )}
+        {onBilling && (
+          <button
+            onClick={handleBilling}
+            className="w-9 h-9 rounded-full bg-green-500 hover:bg-green-600 text-white flex items-center justify-center transition-all hover:shadow-md hover:scale-110 active:scale-95"
+            title="Go to Billing"
+            data-testid={`billing-${id}`}
+          >
+            <DollarSign className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
