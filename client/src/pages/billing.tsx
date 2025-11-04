@@ -27,6 +27,7 @@ interface OrderItem {
   price: number;
   quantity: number;
   notes?: string;
+  isFromDatabase?: boolean;
 }
 
 export default function BillingPage() {
@@ -39,6 +40,7 @@ export default function BillingPage() {
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "upi">("cash");
   const [currentTableId, setCurrentTableId] = useState<string | null>(null);
   const [tableNumber, setTableNumber] = useState<string>("");
+  const [floorName, setFloorName] = useState<string>("");
   const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
   const { toast} = useToast();
 
@@ -46,12 +48,14 @@ export default function BillingPage() {
     const params = new URLSearchParams(window.location.search);
     const tableId = params.get("tableId");
     const tableNum = params.get("tableNumber");
+    const floor = params.get("floorName");
     const orderId = params.get("orderId");
     const type = params.get("type") as "dine-in" | "delivery" | "pickup" | null;
     
     if (tableId && tableNum) {
       setCurrentTableId(tableId);
       setTableNumber(tableNum);
+      setFloorName(floor || "");
       setServiceType(type || "dine-in");
     } else if (type === "delivery") {
       setServiceType("delivery");
@@ -75,6 +79,7 @@ export default function BillingPage() {
         price: parseFloat(item.price),
         quantity: item.quantity,
         notes: item.notes || undefined,
+        isFromDatabase: true,
       }));
       
       setOrderItems(formattedItems);
@@ -194,11 +199,11 @@ export default function BillingPage() {
     const menuItem = menuItems.find((item) => item.id === itemId);
     if (!menuItem) return;
 
-    const existingItem = orderItems.find((item) => item.menuItemId === itemId);
+    const existingItem = orderItems.find((item) => item.menuItemId === itemId && !item.isFromDatabase);
     if (existingItem) {
       setOrderItems(
         orderItems.map((item) =>
-          item.menuItemId === itemId ? { ...item, quantity: item.quantity + 1 } : item
+          item.id === existingItem.id ? { ...item, quantity: item.quantity + 1 } : item
         )
       );
     } else {
@@ -211,12 +216,23 @@ export default function BillingPage() {
           price: parseFloat(menuItem.price),
           quantity: 1,
           notes: undefined,
+          isFromDatabase: false,
         },
       ]);
     }
   };
 
   const handleUpdateQuantity = (id: string, quantity: number) => {
+    const item = orderItems.find((i) => i.id === id);
+    if (item?.isFromDatabase) {
+      toast({
+        title: "Cannot modify",
+        description: "This item has already been sent to kitchen. Add a new order for changes.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     if (quantity === 0) {
       setOrderItems(orderItems.filter((item) => item.id !== id));
     } else {
@@ -225,10 +241,28 @@ export default function BillingPage() {
   };
 
   const handleRemoveItem = (id: string) => {
+    const item = orderItems.find((i) => i.id === id);
+    if (item?.isFromDatabase) {
+      toast({
+        title: "Cannot remove",
+        description: "This item has already been sent to kitchen. It cannot be removed from this view.",
+        variant: "destructive",
+      });
+      return;
+    }
     setOrderItems(orderItems.filter((item) => item.id !== id));
   };
 
   const handleUpdateNotes = (id: string, notes: string) => {
+    const item = orderItems.find((i) => i.id === id);
+    if (item?.isFromDatabase) {
+      toast({
+        title: "Cannot modify",
+        description: "This item has already been sent to kitchen. Add a new order for changes.",
+        variant: "destructive",
+      });
+      return;
+    }
     setOrderItems(orderItems.map((item) => (item.id === id ? { ...item, notes } : item)));
   };
 
@@ -244,18 +278,20 @@ export default function BillingPage() {
     }
 
     for (const item of orderItems) {
-      await addOrderItemMutation.mutateAsync({
-        orderId: orderId!,
-        item: {
+      if (!item.isFromDatabase) {
+        await addOrderItemMutation.mutateAsync({
           orderId: orderId!,
-          menuItemId: item.menuItemId,
-          name: item.name,
-          quantity: item.quantity,
-          price: item.price.toFixed(2),
-          notes: item.notes || null,
-          status: "new",
-        },
-      });
+          item: {
+            orderId: orderId!,
+            menuItemId: item.menuItemId,
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price.toFixed(2),
+            notes: item.notes || null,
+            status: "new",
+          },
+        });
+      }
     }
     
     return orderId;
@@ -280,8 +316,13 @@ export default function BillingPage() {
         description: "Order sent to kitchen successfully",
       });
       
-      setOrderItems([]);
-      setCurrentOrderId(null);
+      const updatedItems = orderItems.map(item => {
+        if (!item.isFromDatabase) {
+          return { ...item, isFromDatabase: true };
+        }
+        return item;
+      });
+      setOrderItems(updatedItems);
     } catch (error) {
       toast({
         title: "Error",
@@ -317,8 +358,13 @@ export default function BillingPage() {
         });
       }
       
-      setOrderItems([]);
-      setCurrentOrderId(null);
+      const updatedItems = orderItems.map(item => {
+        if (!item.isFromDatabase) {
+          return { ...item, isFromDatabase: true };
+        }
+        return item;
+      });
+      setOrderItems(updatedItems);
     } catch (error) {
       toast({
         title: "Error",
@@ -409,6 +455,18 @@ export default function BillingPage() {
 
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">
           <div className="p-5 bg-white border-b border-gray-200">
+            {tableNumber && (
+              <div className="mb-4 flex items-center gap-2">
+                <Badge variant="default" className="text-base px-3 py-1">
+                  Table {tableNumber}
+                </Badge>
+                {floorName && (
+                  <Badge variant="secondary" className="text-base px-3 py-1">
+                    {floorName}
+                  </Badge>
+                )}
+              </div>
+            )}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
               <Input

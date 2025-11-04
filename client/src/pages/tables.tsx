@@ -173,20 +173,13 @@ export default function TablesPage() {
     const table = tablesWithOrders.find((t) => t.id === id);
     if (!table) return;
 
+    const floor = floors.find((f) => f.id === table.floorId);
+    const floorName = floor?.name || "";
+
     if (table.status === "free") {
-      navigate(`/billing?tableId=${table.id}&tableNumber=${table.tableNumber}&type=dine-in`);
+      navigate(`/billing?tableId=${table.id}&tableNumber=${table.tableNumber}&floorName=${encodeURIComponent(floorName)}&type=dine-in`);
     } else if (table.currentOrderId) {
-      setSelectedTable(table);
-      
-      try {
-        const response = await fetch(`/api/orders/${table.currentOrderId}/items`);
-        const items = await response.json();
-        setOrderDetails(items);
-      } catch (error) {
-        setOrderDetails([]);
-      }
-      
-      setShowOrderDialog(true);
+      navigate(`/billing?tableId=${table.id}&tableNumber=${table.tableNumber}&floorName=${encodeURIComponent(floorName)}&orderId=${table.currentOrderId}&type=dine-in`);
     }
   };
 
@@ -219,10 +212,13 @@ export default function TablesPage() {
     const table = tablesWithOrders.find((t) => t.id === tableId);
     if (!table) return;
     
+    const floor = floors.find((f) => f.id === table.floorId);
+    const floorName = floor?.name || "";
+    
     if (table.status === "free") {
-      navigate(`/billing?tableId=${table.id}&tableNumber=${table.tableNumber}&type=dine-in`);
+      navigate(`/billing?tableId=${table.id}&tableNumber=${table.tableNumber}&floorName=${encodeURIComponent(floorName)}&type=dine-in`);
     } else if (table.currentOrderId) {
-      navigate(`/billing?tableId=${table.id}&tableNumber=${table.tableNumber}&orderId=${table.currentOrderId}&type=dine-in`);
+      navigate(`/billing?tableId=${table.id}&tableNumber=${table.tableNumber}&floorName=${encodeURIComponent(floorName)}&orderId=${table.currentOrderId}&type=dine-in`);
     }
   };
 
