@@ -1,6 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import AppHeader from "@/components/AppHeader";
 import TableCard from "@/components/TableCard";
 import ReservationDialog from "@/components/ReservationDialog";
@@ -36,7 +36,6 @@ export default function TablesPage() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   useWebSocket();
-  const [tablesWithOrders, setTablesWithOrders] = useState<TableWithOrder[]>([]);
   const [showOrderDialog, setShowOrderDialog] = useState(false);
   const [selectedTable, setSelectedTable] = useState<TableWithOrder | null>(null);
   const [orderDetails, setOrderDetails] = useState<any[]>([]);
@@ -72,21 +71,18 @@ export default function TablesPage() {
 
   const isLoading = tablesLoading || floorsLoading;
 
-  useEffect(() => {
+  const tablesWithOrders = useMemo(() => {
     if (!tables.length) {
-      setTablesWithOrders([]);
-      return;
+      return [];
     }
     
-    const enrichTables = tables.map((table) => {
+    return tables.map((table) => {
       const tableOrder = orders.find((order) => order.id === table.currentOrderId);
       return {
         ...table,
         orderStartTime: tableOrder?.createdAt ? String(tableOrder.createdAt) : null,
       };
     });
-    
-    setTablesWithOrders(enrichTables);
   }, [tables, orders]);
 
   const markServedMutation = useMutation({

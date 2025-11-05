@@ -233,6 +233,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!result.success) {
       return res.status(400).json({ error: result.error });
     }
+    console.log('[Server] Creating order item for order:', req.params.id);
     const item = await storage.createOrderItem(result.data);
 
     const orderItems = await storage.getOrderItems(req.params.id);
@@ -265,6 +266,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
 
+    console.log('[Server] Broadcasting order_item_added for orderId:', req.params.id);
     broadcastUpdate("order_item_added", { orderId: req.params.id, item });
     res.json(item);
   });
@@ -300,10 +302,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(400).json({ error: result.error });
     }
     
+    console.log('[Server] Sending order to kitchen:', req.params.id);
     const order = await storage.updateOrderStatus(req.params.id, "sent_to_kitchen");
     if (!order) {
       return res.status(404).json({ error: "Order not found" });
     }
+    console.log('[Server] Broadcasting order_updated for KOT, orderId:', order.id, 'status:', order.status);
     broadcastUpdate("order_updated", order);
     res.json({ order, shouldPrint: result.data.print });
   });

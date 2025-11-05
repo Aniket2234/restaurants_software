@@ -40,3 +40,6 @@
 [x] 40. Fixed Kitchen Display to automatically show served orders when new items are added and KOT is resent
 [x] 41. Updated Kitchen Display mutations to invalidate order items queries using predicates
 [x] 42. Orders now automatically move from history back to Active Orders when items are added without refresh
+[x] 43. Fixed infinite loop in Tables page by converting useState to useMemo
+[x] 44. Added comprehensive logging on client and server to track WebSocket messages and query invalidations
+[x] 45. Added server-side logging for order item creation and KOT sending to debug real-time updates
