@@ -126,7 +126,7 @@ export default function TableCard({
           config.borderColor
         )}
       >
-        <div className="absolute top-1 left-1 z-10 flex items-center gap-1 bg-gray-800 text-white rounded-full px-2 py-1 text-xs font-bold shadow-md">
+        <div className="absolute top-1 left-1 z-10 flex items-center gap-1 text-black text-xs font-bold">
           <Users className="h-3 w-3" />
           <span>{seats}</span>
         </div>
