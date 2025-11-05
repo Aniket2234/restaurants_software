@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueries } from "@tanstack/react-query";
 import AppHeader from "@/components/AppHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Clock, Check } from "lucide-react";
+import { Clock, Check, History } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useWebSocket } from "@/hooks/use-websocket";
@@ -17,6 +17,7 @@ interface OrderWithDetails {
 
 export default function KitchenPage() {
   useWebSocket();
+  const [showHistory, setShowHistory] = useState(false);
   
   const { data: activeOrders = [] } = useQuery<Order[]>({
     queryKey: ["/api/orders/active"],
@@ -57,6 +58,16 @@ export default function KitchenPage() {
       return { order, items, tableNumber };
     });
   }, [activeOrders, orderItemQueries, tables]);
+
+  const { activeOrdersList, servedOrdersList } = useMemo(() => {
+    const active = ordersWithDetails.filter(({ items }) => 
+      !items.every(item => item.status === "served")
+    );
+    const served = ordersWithDetails.filter(({ items }) => 
+      items.every(item => item.status === "served")
+    );
+    return { activeOrdersList: active, servedOrdersList: served };
+  }, [ordersWithDetails]);
 
   const isLoading = orderItemQueries.some(q => q.isLoading);
 
@@ -107,9 +118,9 @@ export default function KitchenPage() {
   };
 
   const statusCounts = {
-    new: ordersWithDetails.filter((o) => getOverallOrderStatus(o.items) === "new").length,
-    preparing: ordersWithDetails.filter((o) => getOverallOrderStatus(o.items) === "preparing").length,
-    ready: ordersWithDetails.filter((o) => getOverallOrderStatus(o.items) === "ready").length,
+    new: activeOrdersList.filter((o) => getOverallOrderStatus(o.items) === "new").length,
+    preparing: activeOrdersList.filter((o) => getOverallOrderStatus(o.items) === "preparing").length,
+    ready: activeOrdersList.filter((o) => getOverallOrderStatus(o.items) === "ready").length,
   };
 
   return (
@@ -138,36 +149,76 @@ export default function KitchenPage() {
               </span>
             </div>
           </div>
-          <Button
-            onClick={handleMarkAllPrepared}
-            disabled={ordersWithDetails.length === 0 || markAllPreparedMutation.isPending}
-            className="bg-success hover:bg-success/90"
-            data-testid="button-mark-all-prepared"
-          >
-            <Check className="h-4 w-4 mr-2" />
-            {markAllPreparedMutation.isPending ? "Processing..." : "Mark All Prepared"}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowHistory(!showHistory)}
+              data-testid="button-toggle-history"
+            >
+              <History className="h-4 w-4 mr-2" />
+              {showHistory ? "Hide" : "Show"} History ({servedOrdersList.length})
+            </Button>
+            <Button
+              onClick={handleMarkAllPrepared}
+              disabled={activeOrdersList.length === 0 || markAllPreparedMutation.isPending}
+              className="bg-success hover:bg-success/90"
+              data-testid="button-mark-all-prepared"
+            >
+              <Check className="h-4 w-4 mr-2" />
+              {markAllPreparedMutation.isPending ? "Processing..." : "Mark All Prepared"}
+            </Button>
+          </div>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6">
         {isLoading ? (
           <div className="text-center py-8 text-muted-foreground">Loading orders...</div>
-        ) : ordersWithDetails.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">No active orders</div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {ordersWithDetails.map(({ order, items, tableNumber }) => (
-              <KitchenOrderCard
-                key={order.id}
-                orderId={order.id}
-                tableNumber={tableNumber}
-                orderTime={new Date(order.createdAt)}
-                items={items}
-                status={getOverallOrderStatus(items)}
-                onItemStatusChange={handleItemStatusChange}
-              />
-            ))}
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-lg font-semibold mb-4">Active Orders</h2>
+              {activeOrdersList.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">No active orders</div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {activeOrdersList.map(({ order, items, tableNumber }) => (
+                    <KitchenOrderCard
+                      key={order.id}
+                      orderId={order.id}
+                      tableNumber={tableNumber}
+                      orderTime={new Date(order.createdAt)}
+                      items={items}
+                      status={getOverallOrderStatus(items)}
+                      onItemStatusChange={handleItemStatusChange}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {showHistory && servedOrdersList.length > 0 && (
+              <div>
+                <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <History className="h-5 w-5" />
+                  Ticket History
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 opacity-60">
+                  {servedOrdersList.map(({ order, items, tableNumber }) => (
+                    <KitchenOrderCard
+                      key={order.id}
+                      orderId={order.id}
+                      tableNumber={tableNumber}
+                      orderTime={new Date(order.createdAt)}
+                      items={items}
+                      status="ready"
+                      onItemStatusChange={handleItemStatusChange}
+                      isHistory={true}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -182,6 +233,7 @@ interface KitchenOrderCardProps {
   items: DBOrderItem[];
   status: "new" | "preparing" | "ready";
   onItemStatusChange: (itemId: string, status: string) => void;
+  isHistory?: boolean;
 }
 
 const statusConfig = {
@@ -197,6 +249,7 @@ function KitchenOrderCard({
   items,
   status,
   onItemStatusChange,
+  isHistory = false,
 }: KitchenOrderCardProps) {
   const [elapsedTime, setElapsedTime] = useState(0);
 
@@ -232,12 +285,20 @@ function KitchenOrderCard({
     });
   };
 
+  const allServed = items.every(item => item.status === "served");
+  
   return (
     <div
-      className={cn("bg-card rounded-lg border-2 overflow-hidden", statusConfig[status].color)}
+      className={cn(
+        "bg-card rounded-lg border-2 overflow-hidden",
+        allServed ? "border-purple-500 bg-purple-500/10" : statusConfig[status].color
+      )}
       data-testid={`kds-order-${orderId}`}
     >
-      <div className={cn("p-3 text-white", statusConfig[status].color)}>
+      <div className={cn(
+        "p-3 text-white",
+        allServed ? "bg-purple-500" : statusConfig[status].color
+      )}>
         <div className="flex justify-between items-start">
           <div>
             <h3 className="font-bold text-lg">Order #{orderId.substring(0, 8)}</h3>
@@ -279,7 +340,7 @@ function KitchenOrderCard({
               <div className="flex items-center gap-2">
                 {item.status === "ready" || item.status === "served" ? (
                   <Check className="h-4 w-4 text-success" />
-                ) : (
+                ) : !isHistory ? (
                   <Button
                     size="sm"
                     variant="outline"
@@ -293,38 +354,50 @@ function KitchenOrderCard({
                   >
                     {item.status === "new" ? "Start" : "Ready"}
                   </Button>
-                )}
+                ) : null}
               </div>
             </div>
           ))}
         </div>
 
-        <div className="flex gap-2">
-          {status === "new" && (
-            <Button
-              className="flex-1"
-              onClick={handleStartPreparing}
-              data-testid={`button-start-${orderId}`}
-            >
-              Start Preparing
-            </Button>
-          )}
-          {status === "preparing" && (
-            <Button
-              className="flex-1"
-              variant="default"
-              onClick={handleMarkReady}
-              data-testid={`button-ready-${orderId}`}
-            >
-              Mark All Ready
-            </Button>
-          )}
-          {status === "ready" && (
-            <div className="flex-1 text-center py-2 font-semibold text-success">
-              ✓ Ready for Pickup
-            </div>
-          )}
-        </div>
+        {!isHistory && (
+          <div className="flex gap-2">
+            {status === "new" && (
+              <Button
+                className="flex-1"
+                onClick={handleStartPreparing}
+                data-testid={`button-start-${orderId}`}
+              >
+                Start Preparing
+              </Button>
+            )}
+            {status === "preparing" && (
+              <Button
+                className="flex-1"
+                variant="default"
+                onClick={handleMarkReady}
+                data-testid={`button-ready-${orderId}`}
+              >
+                Mark All Ready
+              </Button>
+            )}
+            {status === "ready" && !allServed && (
+              <div className="flex-1 text-center py-2 font-semibold text-success">
+                ✓ Ready for Pickup
+              </div>
+            )}
+            {allServed && (
+              <div className="flex-1 text-center py-2 font-semibold text-purple-600 dark:text-purple-400">
+                ✓ Served
+              </div>
+            )}
+          </div>
+        )}
+        {isHistory && (
+          <div className="flex-1 text-center py-2 font-semibold text-purple-600 dark:text-purple-400">
+            ✓ Served - In History
+          </div>
+        )}
       </div>
     </div>
   );
