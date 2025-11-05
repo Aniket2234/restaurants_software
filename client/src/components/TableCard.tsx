@@ -117,20 +117,20 @@ export default function TableCard({
   };
   
   return (
-    <div className="relative flex flex-col items-center">
-      {status === "reserved" && (
-        <div className="absolute -top-1 -right-1 z-10 bg-[#0075ff] text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-md border-2 border-white">
-          R
-        </div>
-      )}
+    <div className="flex flex-col items-center">
       <button
         onClick={handleClick}
         data-testid={`table-${id}`}
         className={cn(
-          "w-full p-4 rounded-lg border-2 bg-white transition-all hover:shadow-xl hover:scale-105 active:scale-95 min-w-32",
+          "relative w-full p-4 rounded-lg border-2 bg-white transition-all hover:shadow-xl hover:scale-105 active:scale-95 min-w-32",
           config.borderColor
         )}
       >
+        {status === "reserved" && (
+          <div className="absolute top-1 right-1 z-10 bg-[#0075ff] text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-md border-2 border-white">
+            R
+          </div>
+        )}
         <div className="flex flex-col items-center gap-2">
           <div className={cn(
             "w-16 h-16 rounded-full border-2 flex items-center justify-center transition-all",
