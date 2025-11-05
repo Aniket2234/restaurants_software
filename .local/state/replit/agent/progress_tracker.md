@@ -37,3 +37,6 @@
 [x] 37. Kitchen Display now properly invalidates both order and order items queries when updates occur
 [x] 38. Completed Replit environment migration - workflow configured with webview output type
 [x] 39. Application successfully running on port 5000 with all features operational
+[x] 40. Fixed Kitchen Display to automatically show served orders when new items are added and KOT is resent
+[x] 41. Updated Kitchen Display mutations to invalidate order items queries using predicates
+[x] 42. Orders now automatically move from history back to Active Orders when items are added without refresh

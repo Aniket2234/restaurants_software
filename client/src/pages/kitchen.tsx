@@ -79,6 +79,12 @@ export default function KitchenPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/orders/active"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tables"] });
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          Array.isArray(query.queryKey) &&
+          query.queryKey[0] === "/api/orders" &&
+          query.queryKey[2] === "items"
+      });
     },
   });
 
@@ -96,6 +102,12 @@ export default function KitchenPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/orders/active"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tables"] });
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          Array.isArray(query.queryKey) &&
+          query.queryKey[0] === "/api/orders" &&
+          query.queryKey[2] === "items"
+      });
     },
   });
 
