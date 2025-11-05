@@ -31,19 +31,27 @@ export function useWebSocket() {
       ws.onmessage = (event) => {
         try {
           const message: WebSocketMessage = JSON.parse(event.data);
-          console.log('[WebSocket] Message received:', message.type);
+          console.log('[WebSocket] Message received:', message.type, 'Data:', message.data);
 
           switch (message.type) {
             case 'table_created':
             case 'table_updated':
+              console.log('[WebSocket] Invalidating tables queries');
               queryClient.invalidateQueries({ queryKey: ['/api/tables'] });
               break;
             case 'order_created':
             case 'order_updated':
             case 'order_completed':
+              console.log('[WebSocket] Invalidating order queries for order:', message.data?.id);
               queryClient.invalidateQueries({ queryKey: ['/api/orders'] });
               queryClient.invalidateQueries({ queryKey: ['/api/orders/active'] });
               queryClient.invalidateQueries({ queryKey: ['/api/tables'] });
+              queryClient.invalidateQueries({
+                predicate: (query) =>
+                  Array.isArray(query.queryKey) &&
+                  query.queryKey[0] === '/api/orders' &&
+                  query.queryKey[2] === 'items'
+              });
               if (message.data?.id) {
                 queryClient.invalidateQueries({ 
                   predicate: (query) => 
@@ -56,9 +64,16 @@ export function useWebSocket() {
             case 'order_item_added':
             case 'order_item_updated':
             case 'order_item_deleted':
+              console.log('[WebSocket] Invalidating order items queries for orderId:', message.data?.orderId);
               queryClient.invalidateQueries({ queryKey: ['/api/orders/active'] });
               queryClient.invalidateQueries({ queryKey: ['/api/orders'] });
               queryClient.invalidateQueries({ queryKey: ['/api/tables'] });
+              queryClient.invalidateQueries({
+                predicate: (query) =>
+                  Array.isArray(query.queryKey) &&
+                  query.queryKey[0] === '/api/orders' &&
+                  query.queryKey[2] === 'items'
+              });
               if (message.data?.orderId) {
                 queryClient.invalidateQueries({ 
                   predicate: (query) => 
@@ -72,6 +87,8 @@ export function useWebSocket() {
             case 'menu_updated':
               queryClient.invalidateQueries({ queryKey: ['/api/menu'] });
               break;
+            default:
+              console.log('[WebSocket] Unknown message type:', message.type);
           }
         } catch (error) {
           console.error('[WebSocket] Failed to parse message:', error);

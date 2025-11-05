@@ -86,10 +86,7 @@ export default function TablesPage() {
       };
     });
     
-    setTablesWithOrders(prevTables => {
-      const hasChanged = JSON.stringify(prevTables) !== JSON.stringify(enrichTables);
-      return hasChanged ? enrichTables : prevTables;
-    });
+    setTablesWithOrders(enrichTables);
   }, [tables, orders]);
 
   const markServedMutation = useMutation({
