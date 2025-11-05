@@ -204,7 +204,7 @@ export default function TablesPage() {
   };
 
   const handleReservationClick = () => {
-    setIsReservationMode(true);
+    setIsReservationMode(!isReservationMode);
     setSelectedTableForReservation(null);
   };
 

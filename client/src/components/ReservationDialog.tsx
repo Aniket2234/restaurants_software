@@ -171,11 +171,21 @@ export default function ReservationDialog({
       return;
     }
 
+    const peopleCount = parseInt(numberOfPeople) || 2;
+    if (selectedTable && peopleCount > selectedTable.seats) {
+      toast({ 
+        title: "Too many people", 
+        description: `This table has a maximum capacity of ${selectedTable.seats} people.`,
+        variant: "destructive" 
+      });
+      return;
+    }
+
     const reservationData = {
       tableId,
       customerName: customerName.trim(),
       customerPhone: customerPhone.trim(),
-      numberOfPeople: parseInt(numberOfPeople) || 2,
+      numberOfPeople: peopleCount,
       timeSlot: new Date(timeSlot),
       notes: notes.trim() || null,
       status: "active",
@@ -256,11 +266,17 @@ export default function ReservationDialog({
                   id="number-of-people"
                   type="number"
                   min="1"
+                  max={selectedTable?.seats}
                   placeholder="2"
                   value={numberOfPeople}
                   onChange={(e) => setNumberOfPeople(e.target.value)}
                   data-testid="input-number-of-people"
                 />
+                {selectedTable && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Maximum {selectedTable.seats} people for this table
+                  </p>
+                )}
               </div>
 
               <div>
